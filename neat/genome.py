@@ -769,7 +769,7 @@ class DesGenomeConfig:
 
         self._params = [ConfigParameter('num_inputs', int),
                         ConfigParameter('num_outputs', int),
-                        ConfigParameter('num_branch', int)
+                        ConfigParameter('num_branch', int),
                         ConfigParameter('num_hidden', int),
                         ConfigParameter('feed_forward', bool),
                         ConfigParameter('compatibility_disjoint_coefficient', float),
