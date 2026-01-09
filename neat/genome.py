@@ -769,7 +769,6 @@ class DesGenomeConfig:
 
         self._params = [ConfigParameter('num_inputs', int),
                         ConfigParameter('num_outputs', int),
-                        ConfigParameter('num_branch', int),
                         ConfigParameter('num_hidden', int),
                         ConfigParameter('feed_forward', bool),
                         ConfigParameter('compatibility_disjoint_coefficient', float),
@@ -799,7 +798,7 @@ class DesGenomeConfig:
         # pins have keys 0,1,...
         self.input_keys = [-i - 1 for i in range(self.num_inputs)]
         
-        self.output_keys = [i for i in range(self.num_outputs * self.num_branch)]
+        self.output_keys = [i for i in range(self.num_outputs)]
 
         self.connection_fraction = None
 
@@ -931,7 +930,7 @@ class DesGenome:
     def parse_config(cls, param_dict):
         param_dict['node_gene_type'] = DefaultNodeGene
         param_dict['connection_gene_type'] = DefaultConnectionGene
-        return DefaultGenomeConfig(param_dict, cls.__name__)
+        return DesGenomeConfig(param_dict, cls.__name__)
 
     @classmethod
     def write_config(cls, f, config):
@@ -944,16 +943,23 @@ class DesGenome:
         # (gene_key, gene) pairs for gene sets.
         self.connections = {}
         self.nodes = {}
+        self.branch_nodes = {}
 
         # Fitness results.
         self.fitness = None
 
+    def get_branch_nodes(self):
+        return self.branch_nodes
+
     def configure_new(self, config):
         """Configure a new genome based on the given configuration."""
 
-        # Create node genes for the output pins.
+        # Create node genes and branch genes for the output pins.
         for node_key in config.output_keys:
             self.nodes[node_key] = self.create_node(config, node_key)
+            self.branch_nodes[node_key] = self.create_node(config, node_key)
+
+        
 
         # Add hidden nodes if requested.
         if config.num_hidden > 0:

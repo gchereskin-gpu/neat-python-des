@@ -6,9 +6,9 @@ class FeedForwardNetwork:
         self.input_nodes = inputs
         self.output_nodes = outputs
         self.node_evals = node_evals
-        self.values = {key: 0.0 for key in inputs + outputs}
+        self.values = {key: 0.0 for key in inputs + list(outputs.items())}
 
-    def activate(self, inputs):
+    def activate(self, inputs, branch_nodes): # needs to have an output/branch argument?
         if len(self.input_nodes) != len(inputs):
             raise RuntimeError(f"Expected {len(self.input_nodes):n} inputs, got {len(inputs):n}")
 
@@ -22,19 +22,26 @@ class FeedForwardNetwork:
             s = agg_func(node_inputs)
             self.values[node] = act_func(bias + response * s)
 
-        return [self.values[i] for i in self.output_nodes]
+        return [self.values[i] for i in list(branch_nodes.items())]
+
+    def get_branch_nodes(self):
+        return self.output_nodes
 
     @staticmethod
     def create(genome, config, unique_value=False, random_values=False):
         """ Receives a genome and returns its phenotype (a FeedForwardNetwork). """
-
+        
         # Gather expressed connections.
         connections = [cg.key for cg in genome.connections.values() if cg.enabled]
 
-        layers, required = feed_forward_layers(config.genome_config.input_keys, config.genome_config.output_keys, connections)
+        
+        layers, required = feed_forward_layers(config.genome_config.input_keys, genome.get_branch_nodes(), connections)
+
         node_evals = []
         # Input nodes are not in 'required', but we need to check connections from them too
         required_with_inputs = required.union(set(config.genome_config.input_keys))
+
+
         for layer in layers:
             for node in layer:
                 inputs = []
@@ -53,4 +60,4 @@ class FeedForwardNetwork:
                 activation_function = config.genome_config.activation_defs.get(ng.activation)
                 node_evals.append((node, activation_function, aggregation_function, ng.bias, ng.response, inputs))
 
-        return FeedForwardNetwork(config.genome_config.input_keys, config.genome_config.output_keys, node_evals)
+        return FeedForwardNetwork(config.genome_config.input_keys, genome.get_branch_nodes(), node_evals)
