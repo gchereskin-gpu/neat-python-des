@@ -760,7 +760,7 @@ class DesGenomeConfig:
                             'full_nodirect', 'full', 'full_direct',
                             'partial_nodirect', 'partial', 'partial_direct']
 
-    def __init__(self, params, section_name='DefaultGenome'):
+    def __init__(self, params, section_name='DesGenome'):
         # Create full set of available activation functions.
         self.activation_defs = ActivationFunctionSet()
         # ditto for aggregation functions - name difference for backward compatibility
