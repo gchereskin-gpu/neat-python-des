@@ -394,8 +394,7 @@ class DesReproduction(DefaultClassConfig):
             remaining = -diff
             indexed.sort(key=lambda x: x[1], reverse=True)  # descending by current spawn size
             i = 0
-            # We know a solution should exist whenever min_total <= pop_size, but
-            # guard against pathological rounding behaviour with a safety break.
+            
             while remaining > 0 and indexed:
                 idx, val = indexed[i]
                 if val > min_species_size:
@@ -404,9 +403,7 @@ class DesReproduction(DefaultClassConfig):
                     indexed[i] = (idx, val)
                     remaining -= 1
                 i = (i + 1) % len(indexed)
-                if i == 0 and remaining > 0:
-                    # Could not adjust further without violating the per-species minimum.
-                    break
+                
 
         if sum(spawn_amounts) != pop_size:
             raise RuntimeError(
