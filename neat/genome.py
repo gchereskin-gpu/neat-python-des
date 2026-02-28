@@ -957,7 +957,7 @@ class DesGenome:
         # Create node genes and branch genes for the output pins.
         for node_key in config.output_keys:
             self.nodes[node_key] = self.create_node(config, node_key)
-            self.branch_nodes[node_key] = copy(self.nodes[node_key])
+            self.branch_nodes[node_key] = copy.deepcopy(self.nodes[node_key])
 
         
 
@@ -1139,7 +1139,7 @@ class DesGenome:
             ng.mutate(config)
 
         for bgid in self.branch_nodes.keys():
-            self.branch_nodes[bgid] = copy(self.nodes[bgid])
+            self.branch_nodes[bgid] = copy.deepcopy(self.nodes[bgid])
 
     def mutate_add_node(self, config):
         """
