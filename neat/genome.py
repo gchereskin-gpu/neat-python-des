@@ -957,7 +957,7 @@ class DesGenome:
         # Create node genes and branch genes for the output pins.
         for node_key in config.output_keys:
             self.nodes[node_key] = self.create_node(config, node_key)
-            self.branch_nodes[node_key] = self.create_node(config, node_key)
+            self.branch_nodes[node_key] = copy(self.nodes[node_key])
 
         
 
@@ -1084,6 +1084,21 @@ class DesGenome:
             else:
                 # Homologous gene: combine genes from both parents.
                 self.nodes[key] = ng1.crossover(ng2)
+        
+        # Inherit branch genes
+        # Note: If branches have multiple nodes or once multiple branches can be evolved, this code may not work accordingly, so this may be the cause of future errors or unexpected behavior.
+        parent1_set = parent1.branch_nodes
+        parent2_set = parent2.branch_nodes
+
+        for key, bg1 in parent1_set.items():
+            bg2 = parent2_set.get(key)
+            assert key not in self.branch_nodes
+            if bg2 is None:
+                # Extra gene: copy from the fittest parent
+                self.branch_nodes[key] = bg1.copy()
+            else:
+                # Homologous gene: combine genes from both parents.
+                self.branch_nodes[key] = bg1.crossover(bg2)
 
     def mutate(self, config):
         """ Mutates this genome. """
@@ -1122,6 +1137,9 @@ class DesGenome:
         # Mutate node genes (bias, response, etc.).
         for ng in self.nodes.values():
             ng.mutate(config)
+
+        for bgid in self.branch_nodes.keys():
+            self.branch_nodes[bgid] = copy(self.nodes[bgid])
 
     def mutate_add_node(self, config):
         """
