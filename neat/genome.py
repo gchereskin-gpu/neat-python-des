@@ -777,6 +777,7 @@ class DesGenomeConfig:
                         ConfigParameter('conn_delete_prob', float),
                         ConfigParameter('node_add_prob', float),
                         ConfigParameter('node_delete_prob', float),
+                        ConfigParameter('branch_add_prob', float),
                         ConfigParameter('single_structural_mutation', bool, 'false'),
                         ConfigParameter('structural_mutation_surer', str, 'default'),
                         ConfigParameter('initial_connection', str, 'unconnected')]
@@ -1105,7 +1106,8 @@ class DesGenome:
 
         if config.single_structural_mutation:
             div = max(1, (config.node_add_prob + config.node_delete_prob +
-                          config.conn_add_prob + config.conn_delete_prob))
+                          config.conn_add_prob + config.conn_delete_prob + 
+                          config.branch_add_prob))
             r = random()
             if r < (config.node_add_prob / div):
                 self.mutate_add_node(config)
@@ -1117,6 +1119,10 @@ class DesGenome:
             elif r < ((config.node_add_prob + config.node_delete_prob +
                        config.conn_add_prob + config.conn_delete_prob) / div):
                 self.mutate_delete_connection()
+            elif r < ((config.node_add_prob + config.node_delete_prob +
+                       config.conn_add_prob + config.conn_delete_prob + 
+                       config.branch_add_prob) / div):
+                self.mutate_add_branch(config)
         else:
             if random() < config.node_add_prob:
                 self.mutate_add_node(config)
@@ -1130,6 +1136,9 @@ class DesGenome:
             if random() < config.conn_delete_prob:
                 self.mutate_delete_connection()
 
+            if random() < config.branch_add_prob:
+                self.mutate_add_branch(config)
+
         # Mutate connection genes.
         for cg in self.connections.values():
             cg.mutate(config)
@@ -1138,6 +1147,7 @@ class DesGenome:
         for ng in self.nodes.values():
             ng.mutate(config)
 
+        # Update branch genes to match mutated node genes.
         for bgid in self.branch_nodes.keys():
             self.branch_nodes[bgid] = copy.deepcopy(self.nodes[bgid])
 
@@ -1192,6 +1202,52 @@ class DesGenome:
         # Add the two new connections with their innovation numbers
         self.add_connection(config, i, new_node_id, 1.0, True, innovation=in_innovation)
         self.add_connection(config, new_node_id, o, conn_to_split.weight, True, innovation=out_innovation)
+
+    def mutate_add_branch(self, config):
+        """
+        Add a new branch in the selected way.
+        
+        Uses innovation tracking per NEAT paper (Stanley & Miikkulainen, 2002):
+        If multiple genomes split the same connection in one generation, the resulting
+        connections receive matching innovation numbers.
+
+        TODO: add multiple ways to add branches
+        """
+        if not self.connections:
+            if config.check_structural_mutation_surer():
+                self.mutate_add_connection(config)
+            return
+        
+        assert config.innovation_tracker is not None, (
+            "Innovation tracker must be set before genome mutations. "
+            "This should be set by the reproduction module."
+        )
+
+        branches = list(branch for branch in zip(*(iter(self.branch_nodes.items()),) * config.num_outputs))
+        
+        # Choose a random branch to duplicate
+        branch_to_duplicate = choice(branches)
+
+        # Duplicate branch nodes in chosen branch and add to nodes and branch_nodes with new keys
+        for bgid, _ in branch_to_duplicate:
+            new_node_id = config.get_new_node_key(self.nodes)
+            self.nodes[new_node_id] = copy.deepcopy(self.nodes[bgid])
+            self.nodes[new_node_id].key = new_node_id
+
+            self.branch_nodes[new_node_id] = copy.deepcopy(self.nodes[new_node_id])
+
+            # only duplicate connections to the original branch node
+            connections_to_duplicate = list((cgid, cg) for cgid, cg in self.connections.items() if cgid[1] == bgid)
+
+            # duplicate connections to original branch node for new branch node
+            for cgid, cg in connections_to_duplicate:
+                i, o = cgid
+                self.connections[(i, new_node_id)] = copy.deepcopy(cg)
+                self.connections[(i, new_node_id)].key = (i, new_node_id)
+                self.connections[(i, new_node_id)].weight *= 0.3
+                self.connections[(i, new_node_id)].innovation = config.innovation_tracker.get_innovation_number(
+                    i, new_node_id, 'add_node_in'
+                )
 
     def add_connection(self, config, input_key, output_key, weight, enabled, innovation=None):
         """Add a connection to this genome. If innovation is None, gets a new one from tracker."""
@@ -1265,7 +1321,7 @@ class DesGenome:
 
     def mutate_delete_node(self, config):
         # Do nothing if there are no non-output nodes.
-        available_nodes = [k for k in self.nodes if k not in config.output_keys]
+        available_nodes = [k for k in self.nodes if k not in self.branch_nodes.keys()]
         if not available_nodes:
             return -1
 
