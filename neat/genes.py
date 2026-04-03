@@ -90,7 +90,10 @@ class BaseGene:
         if hasattr(self, 'innovation'):
             new_gene = self.__class__(self.key, innovation=self.innovation)
         else:
-            new_gene = self.__class__(self.key)
+            if self.is_branch or gene2.is_branch:
+                new_gene = self.__class__(self.key, True)
+            else:
+                new_gene = self.__class__(self.key, False)
         
         for a in self._gene_attributes:
             if random() > 0.5:
@@ -131,18 +134,22 @@ class DefaultNodeGene(BaseGene):
         return d * config.compatibility_weight_coefficient
     
 
-class OutputNodeGene(BaseGene):
+class DesNodeGene(BaseGene):
 
     """ represents an output node of a certain branch """
 
     _gene_attributes = [FloatAttribute('bias'),
                         FloatAttribute('response'),
                         StringAttribute('activation', options=''),
-                        StringAttribute('aggregation', options='')]
+                        StringAttribute('aggregation', options=''),
+                        FloatAttribute('scale'),
+                        BoolAttribute('is_branch')]
 
-    def __init__(self, key):
-        assert isinstance(key, int), f"DefaultNodeGene key must be an int, not {key!r}"
+    def __init__(self, key, is_branch = False):
+        assert isinstance(key, int), f"DesNodeGene key must be an int, not {key!r}"
         BaseGene.__init__(self, key)
+        setattr(self, 'is_branch', is_branch)
+         
 
     def distance(self, other, config):
         d = abs(self.bias - other.bias) + abs(self.response - other.response)

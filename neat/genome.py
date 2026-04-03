@@ -7,7 +7,7 @@ from random import choice, random, shuffle
 from neat.activations import ActivationFunctionSet
 from neat.aggregations import AggregationFunctionSet
 from neat.config import ConfigParameter, write_pretty_params
-from neat.genes import DefaultConnectionGene, DefaultNodeGene
+from neat.genes import DefaultConnectionGene, DefaultNodeGene, DesNodeGene
 from neat.graphs import creates_cycle
 from neat.graphs import required_for_output
 
@@ -755,7 +755,7 @@ def get_pruned_genes(node_genes, connection_genes, input_keys, output_keys):
 
 
 class DesGenomeConfig:
-    """Sets up and holds configuration information for the DefaultGenome class."""
+    """Sets up and holds configuration information for the DesGenome class."""
     allowed_connectivity = ['unconnected', 'fs_neat_nohidden', 'fs_neat', 'fs_neat_hidden',
                             'full_nodirect', 'full', 'full_direct',
                             'partial_nodirect', 'partial', 'partial_direct']
@@ -929,7 +929,7 @@ class DesGenome:
 
     @classmethod
     def parse_config(cls, param_dict):
-        param_dict['node_gene_type'] = DefaultNodeGene
+        param_dict['node_gene_type'] = DesNodeGene
         param_dict['connection_gene_type'] = DefaultConnectionGene
         return DesGenomeConfig(param_dict, cls.__name__)
 
@@ -957,10 +957,11 @@ class DesGenome:
 
         # Create node genes and branch genes for the output pins.
         for node_key in config.output_keys:
-            self.nodes[node_key] = self.create_node(config, node_key)
+            self.nodes[node_key] = self.create_node(config, node_key, True)
             self.branch_nodes[node_key] = copy.deepcopy(self.nodes[node_key])
+            
 
-        
+
 
         # Add hidden nodes if requested.
         if config.num_hidden > 0:
@@ -1415,9 +1416,10 @@ class DesGenome:
         return s
 
     @staticmethod
-    def create_node(config, node_id):
-        node = config.node_gene_type(node_id)
+    def create_node(config, node_id, isBranch = False):
+        node = config.node_gene_type(node_id, isBranch)
         node.init_attributes(config)
+        setattr(node, 'is_branch', isBranch)
         return node
 
     @staticmethod
