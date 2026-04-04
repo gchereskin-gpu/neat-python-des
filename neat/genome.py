@@ -1303,7 +1303,7 @@ class DesGenome:
             return
 
         # Don't allow connections between two output nodes
-        if in_node in self.branch_nodes.keys() and out_node in config.output_keys:
+        if in_node in self.branch_nodes.keys() and out_node in self.branch_nodes.keys():
             return
 
         # No need to check for connections between input nodes:
