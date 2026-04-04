@@ -1,5 +1,10 @@
 """Implements the core evolution algorithm."""
 
+import neat
+from pureples.shared.visualize import draw_net
+import pickle
+from pureples.des_hyperneat import DESNetwork
+
 import random
 from itertools import count
 
@@ -217,7 +222,7 @@ class DesPopulation:
     def remove_reporter(self, reporter):
         self.reporters.remove(reporter)
 
-    def run(self, fitness_function, n=None):
+    def run(self, fitness_function, n=None, CONFIG = None, SUBSTRATE = None, DYNAMIC_PARAMS = None, VERSION_TEXT = None):
         """
         Runs NEAT's genetic algorithm for at most n generations.  If n
         is None, run until solution is found or extinction occurs.
@@ -293,6 +298,27 @@ class DesPopulation:
             self.reporters.end_generation(self.config, self.population, self.species)
 
             self.generation += 1
+
+
+
+
+            WINNER = self.best_genome
+            CPPN = neat.nn.DesFeedForwardNetwork.create(WINNER, CONFIG)
+            NETWORK = DESNetwork(SUBSTRATE, CPPN, DYNAMIC_PARAMS)
+            # This will also draw winner_net.
+            WINNER_NET = NETWORK.create_phenotype_network(
+                filename=f'pureples/experiments/xor/des_hyperneat_xor_{VERSION_TEXT}_winner.png')
+
+
+            # Save CPPN if wished reused and draw it to file.
+            draw_net(
+                CPPN, filename=f"pureples/experiments/xor/des_hyperneat_xor_{VERSION_TEXT}_cppn")
+            with open(f'pureples/experiments/xor/des_hyperneat_xor_{VERSION_TEXT}_cppn.pkl', 'wb') as output:
+                pickle.dump(CPPN, output, pickle.HIGHEST_PROTOCOL)
+
+
+
+
 
         if self.config.no_fitness_termination:
             self.reporters.found_solution(self.config, self.generation, self.best_genome)
