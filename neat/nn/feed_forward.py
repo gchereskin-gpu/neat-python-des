@@ -62,12 +62,13 @@ class FeedForwardNetwork:
 
 
 class DesFeedForwardNetwork:
-    def __init__(self, inputs, outputs, node_evals, config):
+    def __init__(self, inputs, outputs, node_evals, config, branch_genes):
         self.input_nodes = inputs
         self.output_nodes = outputs
         self.node_evals = node_evals
         self.config = config
         self.values = {key: 0.0 for key in inputs + outputs}
+        self.branch_genes = branch_genes
 
     def activate(self, inputs, branch_nodes): # needs to have an output/branch argument?
         if len(self.input_nodes) != len(inputs):
@@ -83,10 +84,16 @@ class DesFeedForwardNetwork:
             s = agg_func(node_inputs)
             self.values[node] = act_func(bias + response * s)
 
+        for node_key in branch_nodes:
+            self.values[node_key] *= getattr(self.branch_genes[node_key], 'scale')
+
         return [self.values[i] for i in branch_nodes]
 
     def get_branch_nodes(self):
         return self.output_nodes
+    
+    def get_branch_genes(self):
+        return self.branch_genes
 
     @staticmethod
     def create(genome, config, unique_value=False, random_values=False):
@@ -95,7 +102,11 @@ class DesFeedForwardNetwork:
         # Gather expressed connections.
         connections = [cg.key for cg in genome.connections.values() if cg.enabled]
 
+        # List of branch node keys
         branch_nodes = list(genome.get_branch_nodes().keys())
+
+        # List of branch node genes which include the nodes' attributes
+        branch_genes = genome.get_branch_nodes()
 
         layers, required = feed_forward_layers(config.genome_config.input_keys, branch_nodes, connections)
 
@@ -122,4 +133,4 @@ class DesFeedForwardNetwork:
                 activation_function = config.genome_config.activation_defs.get(ng.activation)
                 node_evals.append((node, activation_function, aggregation_function, ng.bias, ng.response, inputs))
 
-        return DesFeedForwardNetwork(config.genome_config.input_keys, branch_nodes, node_evals, config)
+        return DesFeedForwardNetwork(config.genome_config.input_keys, branch_nodes, node_evals, config, branch_genes)
