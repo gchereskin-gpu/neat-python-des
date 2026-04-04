@@ -90,10 +90,11 @@ class BaseGene:
         if hasattr(self, 'innovation'):
             new_gene = self.__class__(self.key, innovation=self.innovation)
         else:
-            if self.is_branch or gene2.is_branch:
-                new_gene = self.__class__(self.key, True)
-            else:
-                new_gene = self.__class__(self.key, False)
+            if hasattr(self, 'is_branch') or hasattr(gene2, 'is_branch'):
+                if self.is_branch or gene2.is_branch:
+                    new_gene = self.__class__(self.key, True)
+                else:
+                    new_gene = self.__class__(self.key, False)
         
         for a in self._gene_attributes:
             if random() > 0.5:

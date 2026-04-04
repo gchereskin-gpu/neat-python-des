@@ -1206,13 +1206,12 @@ class DesGenome:
 
     def mutate_add_branch(self, config):
         """
-        Add a new branch in the selected way.
-        
+        Add a new branch by duplicating the connections of a previous branch.
+
         Uses innovation tracking per NEAT paper (Stanley & Miikkulainen, 2002):
         If multiple genomes split the same connection in one generation, the resulting
         connections receive matching innovation numbers.
 
-        TODO: add multiple ways to add branches
         """
         if not self.connections:
             if config.check_structural_mutation_surer():
@@ -1234,6 +1233,9 @@ class DesGenome:
             new_node_id = config.get_new_node_key(self.nodes)
             self.nodes[new_node_id] = copy.deepcopy(self.nodes[bgid])
             self.nodes[new_node_id].key = new_node_id
+            
+            # half the scale factor of the new branch node
+            setattr(self.nodes[new_node_id], 'scale', getattr(self.nodes[new_node_id], 'scale') * 0.5)
 
             self.branch_nodes[new_node_id] = copy.deepcopy(self.nodes[new_node_id])
 
@@ -1245,7 +1247,6 @@ class DesGenome:
                 i, o = cgid
                 self.connections[(i, new_node_id)] = copy.deepcopy(cg)
                 self.connections[(i, new_node_id)].key = (i, new_node_id)
-                self.connections[(i, new_node_id)].weight *= 0.3
                 self.connections[(i, new_node_id)].innovation = config.innovation_tracker.get_innovation_number(
                     i, new_node_id, 'add_node_in'
                 )
@@ -1302,7 +1303,7 @@ class DesGenome:
             return
 
         # Don't allow connections between two output nodes
-        if in_node in config.output_keys and out_node in config.output_keys:
+        if in_node in self.branch_nodes.keys() and out_node in config.output_keys:
             return
 
         # No need to check for connections between input nodes:
