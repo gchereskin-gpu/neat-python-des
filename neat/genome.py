@@ -4,6 +4,8 @@ import sys
 from itertools import count
 from random import choice, random, shuffle
 
+from matplotlib.style import available
+
 from neat.activations import ActivationFunctionSet
 from neat.aggregations import AggregationFunctionSet
 from neat.config import ConfigParameter, write_pretty_params
@@ -1323,7 +1325,12 @@ class DesGenome:
 
     def mutate_delete_node(self, config):
         # Do nothing if there are no non-output nodes.
-        available_nodes = [k for k in self.nodes if k not in self.branch_nodes.keys()]
+
+        if len(self.branch_nodes) <= 1:
+            available_nodes = [k for k in self.nodes if k not in self.branch_nodes.keys()]
+        else:
+            available_nodes = [k for k in self.nodes]
+
         if not available_nodes:
             return -1
 
@@ -1338,6 +1345,8 @@ class DesGenome:
             del self.connections[key]
 
         del self.nodes[del_key]
+        if del_key in self.branch_nodes.keys():
+            del self.branch_nodes[del_key]
 
         return del_key
 
