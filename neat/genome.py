@@ -1382,6 +1382,9 @@ class DesGenome:
                              (config.compatibility_disjoint_coefficient *
                               disjoint_nodes)) / max_nodes
 
+        # Compute branch gene distances.
+        branch_distance = (max(len(self.branch_nodes), len(other.branch_nodes)) + 10) / (min(len(self.branch_nodes), len(other.branch_nodes)) + 10) # these integer constants make the differences in branch node numbers less impactful, especially for small differences like 2 and 3
+
         # Compute connection gene differences.
         connection_distance = 0.0
         if self.connections or other.connections:
@@ -1403,7 +1406,7 @@ class DesGenome:
                                    (config.compatibility_disjoint_coefficient *
                                     disjoint_connections)) / max_conn
 
-        distance = node_distance + connection_distance
+        distance = (node_distance + connection_distance) * branch_distance
         return distance
 
     def size(self):
