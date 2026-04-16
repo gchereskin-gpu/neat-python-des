@@ -193,3 +193,35 @@ class DefaultConnectionGene(BaseGene):
     def __hash__(self):
         """Hash by innovation number for use in sets/dicts."""
         return hash(self.innovation)
+
+class AdaptiveConnectionGene(BaseGene):
+    _gene_attributes = [FloatAttribute('weight'),
+                        BoolAttribute('enabled'),
+                        FloatAttribute('a'),
+                        FloatAttribute('b'),
+                        FloatAttribute('c'),
+                        FloatAttribute('d'),
+                        FloatAttribute('n')]
+
+    def __init__(self, key, innovation=None):
+        assert isinstance(key, tuple), f"DefaultConnectionGene key must be a tuple, not {key!r}"
+        assert innovation is not None, "Innovation number is required for DefaultConnectionGene"
+        assert isinstance(innovation, int), f"Innovation must be an int, not {type(innovation)}"
+        BaseGene.__init__(self, key)
+        self.innovation = innovation
+
+    def distance(self, other, config):
+        d = abs(self.weight - other.weight)
+        if self.enabled != other.enabled:
+            d += 1.0
+        return d * config.compatibility_weight_coefficient
+    
+    def __eq__(self, other):
+        """Compare genes by innovation number."""
+        if not isinstance(other, AdaptiveConnectionGene):
+            return False
+        return self.innovation == other.innovation
+    
+    def __hash__(self):
+        """Hash by innovation number for use in sets/dicts."""
+        return hash(self.innovation)
