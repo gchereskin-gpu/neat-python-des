@@ -109,6 +109,8 @@ class AdaptiveRecurrentNetwork:
             node_inputs = [ivalues[i] * w for i, w in links]
             s = aggregation(node_inputs)
             ovalues[node] = activation(bias + response * s)
+        
+        # update connection weights with learning rules
 
         return [ovalues[i] for i in self.output_nodes]
 

@@ -159,6 +159,37 @@ class DesNodeGene(BaseGene):
         if self.aggregation != other.aggregation:
             d += 1.0
         return d * config.compatibility_weight_coefficient
+    
+
+class AdaptiveDesNodeGene(BaseGene):
+
+    """ represents an output node of a certain branch """
+
+    _gene_attributes = [FloatAttribute('bias'),
+                        FloatAttribute('response'),
+                        StringAttribute('activation', options=''),
+                        StringAttribute('aggregation', options=''),
+                        FloatAttribute('scale'),
+                        BoolAttribute('is_branch'),
+                        FloatAttribute('a'),
+                        FloatAttribute('b'),
+                        FloatAttribute('c'),
+                        FloatAttribute('d'),
+                        FloatAttribute('n')]
+
+    def __init__(self, key, is_branch = False):
+        assert isinstance(key, int), f"DesNodeGene key must be an int, not {key!r}"
+        BaseGene.__init__(self, key)
+        setattr(self, 'is_branch', is_branch)
+         
+
+    def distance(self, other, config):
+        d = abs(self.bias - other.bias) + abs(self.response - other.response)
+        if self.activation != other.activation:
+            d += 1.0
+        if self.aggregation != other.aggregation:
+            d += 1.0
+        return d * config.compatibility_weight_coefficient
 
 
 # TODO: Do an ablation study to determine whether the enabled setting is
@@ -187,38 +218,6 @@ class DefaultConnectionGene(BaseGene):
     def __eq__(self, other):
         """Compare genes by innovation number."""
         if not isinstance(other, DefaultConnectionGene):
-            return False
-        return self.innovation == other.innovation
-    
-    def __hash__(self):
-        """Hash by innovation number for use in sets/dicts."""
-        return hash(self.innovation)
-
-class AdaptiveConnectionGene(BaseGene):
-    _gene_attributes = [FloatAttribute('weight'),
-                        BoolAttribute('enabled'),
-                        FloatAttribute('a'),
-                        FloatAttribute('b'),
-                        FloatAttribute('c'),
-                        FloatAttribute('d'),
-                        FloatAttribute('n')]
-
-    def __init__(self, key, innovation=None):
-        assert isinstance(key, tuple), f"DefaultConnectionGene key must be a tuple, not {key!r}"
-        assert innovation is not None, "Innovation number is required for DefaultConnectionGene"
-        assert isinstance(innovation, int), f"Innovation must be an int, not {type(innovation)}"
-        BaseGene.__init__(self, key)
-        self.innovation = innovation
-
-    def distance(self, other, config):
-        d = abs(self.weight - other.weight)
-        if self.enabled != other.enabled:
-            d += 1.0
-        return d * config.compatibility_weight_coefficient
-    
-    def __eq__(self, other):
-        """Compare genes by innovation number."""
-        if not isinstance(other, AdaptiveConnectionGene):
             return False
         return self.innovation == other.innovation
     

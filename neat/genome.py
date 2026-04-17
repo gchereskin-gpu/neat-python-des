@@ -9,7 +9,7 @@ from matplotlib.style import available
 from neat.activations import ActivationFunctionSet
 from neat.aggregations import AggregationFunctionSet
 from neat.config import ConfigParameter, write_pretty_params
-from neat.genes import AdaptiveConnectionGene, DefaultConnectionGene, DefaultNodeGene, DesNodeGene
+from neat.genes import AdaptiveDesNodeGene, DefaultConnectionGene, DefaultNodeGene, DesNodeGene
 from neat.graphs import creates_cycle
 from neat.graphs import required_for_output
 
@@ -1582,7 +1582,7 @@ class DesGenome:
 
 
 class AdaptiveDesGenomeConfig:
-    """Sets up and holds configuration information for the DesGenome class."""
+    """Sets up and holds configuration information for the AdaptiveDesGenome class."""
     allowed_connectivity = ['unconnected', 'fs_neat_nohidden', 'fs_neat', 'fs_neat_hidden',
                             'full_nodirect', 'full', 'full_direct',
                             'partial_nodirect', 'partial', 'partial_direct']
@@ -1756,8 +1756,8 @@ class AdaptiveDesGenome:
 
     @classmethod
     def parse_config(cls, param_dict):
-        param_dict['node_gene_type'] = DesNodeGene
-        param_dict['connection_gene_type'] = AdaptiveConnectionGene
+        param_dict['node_gene_type'] = AdaptiveDesNodeGene
+        param_dict['connection_gene_type'] = DefaultConnectionGene
         return AdaptiveDesGenomeConfig(param_dict, cls.__name__)
 
     @classmethod
