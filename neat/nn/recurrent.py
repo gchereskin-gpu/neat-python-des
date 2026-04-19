@@ -85,7 +85,7 @@ class AdaptiveRecurrentNetwork:
 
             for node, ignored_activation, ignored_aggregation, ignored_bias, ignored_response, links in self.node_evals:
                 v[node] = 0.0
-                for i, w in links:
+                for i, w, a, b, c, d, n in links:
                     v[i] = 0.0
         self.active = 0
 
@@ -106,11 +106,20 @@ class AdaptiveRecurrentNetwork:
             ovalues[i] = v
 
         for node, activation, aggregation, bias, response, links in self.node_evals:
-            node_inputs = [ivalues[i] * w for i, w in links]
+            node_inputs = [ivalues[i] * w for i, w, a, b, c, d, n in links]
             s = aggregation(node_inputs)
             ovalues[node] = activation(bias + response * s)
         
         # update connection weights with learning rules
+        for node, activation, aggregation, bias, response, links in self.node_evals:
+            for idx, link in enumerate(links):
+                i, w, a, b, c, d, n = link
+                d_w = n * ((a * ovalues[i] * ovalues[node]) +
+                        (b * ovalues[i]) +
+                        (c * ovalues[node]) +
+                        (d * w))
+                new_w = w + d_w
+                links[idx] = (i, new_w, a, b, c, d, n)
 
         return [ovalues[i] for i in self.output_nodes]
 
