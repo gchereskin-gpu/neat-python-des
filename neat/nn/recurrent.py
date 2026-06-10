@@ -73,10 +73,11 @@ class RecurrentNetwork:
 
 
 class AdaptiveRecurrentNetwork:
-    def __init__(self, inputs, outputs, node_evals):
+    def __init__(self, inputs, outputs, node_evals, max_weight):
         self.input_nodes = inputs
         self.output_nodes = outputs
         self.node_evals = node_evals
+        self.max_weight = max_weight
 
         self.values = [{}, {}]
         for v in self.values:
@@ -118,7 +119,7 @@ class AdaptiveRecurrentNetwork:
                         (b * ovalues[i]) +
                         (c * ovalues[node]) +
                         (d * w))
-                new_w = w + d_w
+                new_w = max(-self.max_weight, min(w + d_w, self.max_weight))
                 links[idx] = (i, new_w, a, b, c, d, n)
 
         return [ovalues[i] for i in self.output_nodes]
