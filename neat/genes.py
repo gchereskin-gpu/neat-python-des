@@ -23,8 +23,24 @@ class BaseGene:
         if hasattr(self, 'innovation'):
             attrib.append('innovation')
         attrib += [a.name for a in self._gene_attributes]
-        attrib = [f'{a}={getattr(self, a)}' for a in attrib]
-        return f'{self.__class__.__name__}({", ".join(attrib)})'
+        
+        # The following commented out code returns the actual attributes' values
+        # def __str__(self):
+        #     attrib = ['key']
+        #     if hasattr(self, 'innovation'):
+        #         attrib.append('innovation')
+        #     attrib += [a.name for a in self._gene_attributes]
+        #     attrib = [f'{a}={getattr(self, a)}' for a in attrib]
+        #     return f'{self.__class__.__name__}({", ".join(attrib)})'
+        
+        # The following code here rounds the attributes' values to 3 decimal places - cleaner for easy reading, inaccurate for recreating CPPNs
+        formatted_attrib = []
+        for name in attrib:
+            value = getattr(self, name)
+            if isinstance(value, float):
+                value = f'{value:.3f}'
+            formatted_attrib.append(f'{name}={value}')
+        return f'{self.__class__.__name__}({", ".join(formatted_attrib)})'
 
     def __lt__(self, other):
         assert isinstance(self.key, type(other.key)), f"Cannot compare keys {self.key!r} and {other.key!r}"
@@ -166,18 +182,18 @@ class AdaptiveDesNodeGene(BaseGene):
 
     """ represents an output node of a certain branch """
 
-    _gene_attributes = [FloatAttribute('bias'),
-                        FloatAttribute('response'),
-                        StringAttribute('activation', options=''),
-                        StringAttribute('aggregation', options=''),
-                        FloatAttribute('scale'),
-                        BoolAttribute('is_branch'),
+    _gene_attributes = [BoolAttribute('is_branch'),
                         FloatAttribute('branch_id'),
+                        FloatAttribute('scale'),
+                        FloatAttribute('n'),
                         FloatAttribute('a'),
                         FloatAttribute('b'),
                         FloatAttribute('c'),
                         FloatAttribute('d'),
-                        FloatAttribute('n')]
+                        FloatAttribute('bias'),
+                        FloatAttribute('response'),
+                        StringAttribute('activation', options=''),
+                        StringAttribute('aggregation', options='')]
 
     def __init__(self, key, is_branch = False):
         assert isinstance(key, int), f"DesNodeGene key must be an int, not {key!r}"

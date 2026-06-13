@@ -1788,7 +1788,6 @@ class AdaptiveDesGenome:
         for node_key in config.output_keys:
             self.nodes[node_key] = self.create_node(config, node_key, True)
             self.branch_nodes[node_key] = copy.deepcopy(self.nodes[node_key])
-            self.branch_nodes[node_key].branch_id = 0.0
 
         # Add hidden nodes if requested.
         if config.num_hidden > 0:
@@ -1977,7 +1976,7 @@ class AdaptiveDesGenome:
 
         branch_id = 0.0
         # Assign branch IDs to the CPPN output nodes.
-        for branch_keys in zip(*(self.branch_nodes.keys(),) * config.num_outputs):
+        for branch_keys in zip(*(iter(self.branch_nodes.keys()),) * config.num_outputs):
             for branch_key in branch_keys:
                 self.nodes[branch_key].branch_id = branch_id
             branch_id += 1.0
@@ -2155,13 +2154,42 @@ class AdaptiveDesGenome:
         cg = self.create_connection(config, in_node, out_node, innovation)
         self.connections[cg.key] = cg
 
-    def mutate_delete_node(self, config):
-        # Do nothing if there are no non-output nodes.
+    def mutate_delete_branch(self, config):
+        # Do nothing if there is only one branch.
 
-        if len(self.branch_nodes) <= 1:
+        if len(self.branch_nodes) <= config.num_outputs:
+            return -1
             available_nodes = [k for k in self.nodes if k not in self.branch_nodes.keys()]
         else:
-            available_nodes = [k for k in self.nodes]
+            available_nodes = [k for k in zip(*iter((self.branch_nodes.keys(),)) * config.num_outputs)]
+
+        if not available_nodes:
+            return -1
+
+        del_keys = choice(available_nodes)
+
+        connections_to_delete = set()
+        for k, v in self.connections.items():
+            for del_key in del_keys:
+                if del_key in v.key:
+                    connections_to_delete.add(v.key)
+
+        for key in connections_to_delete:
+            del self.connections[key]
+
+        for del_key in del_keys:
+            del self.nodes[del_key]
+            del self.branch_nodes[del_key]
+
+        return del_key
+
+    def mutate_delete_node(self, config):
+        # Do nothing if there are no nodes.
+
+        if len(self.nodes) <= len(self.branch_nodes):
+            return -1
+        else:
+            available_nodes = [k for k in self.nodes if k not in self.branch_nodes.keys()]
 
         if not available_nodes:
             return -1
@@ -2177,8 +2205,7 @@ class AdaptiveDesGenome:
             del self.connections[key]
 
         del self.nodes[del_key]
-        if del_key in self.branch_nodes.keys():
-            del self.branch_nodes[del_key]
+        assert del_key not in self.branch_nodes.keys(), "Deleted node must not be a branch node"
 
         return del_key
 
