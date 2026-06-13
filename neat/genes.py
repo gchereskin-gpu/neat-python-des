@@ -144,7 +144,8 @@ class DesNodeGene(BaseGene):
                         StringAttribute('activation', options=''),
                         StringAttribute('aggregation', options=''),
                         FloatAttribute('scale'),
-                        BoolAttribute('is_branch')]
+                        BoolAttribute('is_branch'),
+                        FloatAttribute('branch_id')]
 
     def __init__(self, key, is_branch = False):
         assert isinstance(key, int), f"DesNodeGene key must be an int, not {key!r}"
@@ -171,6 +172,7 @@ class AdaptiveDesNodeGene(BaseGene):
                         StringAttribute('aggregation', options=''),
                         FloatAttribute('scale'),
                         BoolAttribute('is_branch'),
+                        FloatAttribute('branch_id'),
                         FloatAttribute('a'),
                         FloatAttribute('b'),
                         FloatAttribute('c'),

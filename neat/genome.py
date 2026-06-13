@@ -1777,6 +1777,8 @@ class AdaptiveDesGenome:
         self.fitness = None
 
     def get_branch_nodes(self):
+        """ Return the branch nodes. """
+
         return self.branch_nodes
 
     def configure_new(self, config):
@@ -1786,6 +1788,7 @@ class AdaptiveDesGenome:
         for node_key in config.output_keys:
             self.nodes[node_key] = self.create_node(config, node_key, True)
             self.branch_nodes[node_key] = copy.deepcopy(self.nodes[node_key])
+            self.branch_nodes[node_key].branch_id = 0.0
 
         # Add hidden nodes if requested.
         if config.num_hidden > 0:
@@ -1927,7 +1930,7 @@ class AdaptiveDesGenome:
                 self.branch_nodes[key] = bg1.crossover(bg2)
 
     def mutate(self, config):
-        """ Mutates this genome. """
+        """ Mutates this genome. Also assigns branch IDs CPPN output nodes. """
 
         if config.single_structural_mutation:
             div = max(1, (config.node_add_prob + config.node_delete_prob +
@@ -1972,6 +1975,13 @@ class AdaptiveDesGenome:
         for ng in self.nodes.values():
             ng.mutate(config)
 
+        branch_id = 0.0
+        # Assign branch IDs to the CPPN output nodes.
+        for branch_keys in zip(*(self.branch_nodes.keys(),) * config.num_outputs):
+            for branch_key in branch_keys:
+                self.nodes[branch_key].branch_id = branch_id
+            branch_id += 1.0
+
         # Update branch genes to match mutated node genes.
         for bgid in self.branch_nodes.keys():
             self.branch_nodes[bgid] = copy.deepcopy(self.nodes[bgid])
@@ -1979,7 +1989,7 @@ class AdaptiveDesGenome:
     def mutate_add_node(self, config):
         """
         Add a new node by splitting an existing connection.
-        
+
         Uses innovation tracking per NEAT paper (Stanley & Miikkulainen, 2002):
         If multiple genomes split the same connection in one generation, the resulting
         connections receive matching innovation numbers.
