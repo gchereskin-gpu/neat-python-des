@@ -73,11 +73,12 @@ class RecurrentNetwork:
 
 
 class AdaptiveRecurrentNetwork:
-    def __init__(self, inputs, outputs, node_evals, max_weight):
+    def __init__(self, inputs, outputs, node_evals, max_weight, num_branches):
         self.input_nodes = inputs
         self.output_nodes = outputs
         self.node_evals = node_evals
         self.max_weight = max_weight
+        self.num_branches = num_branches
 
         self.values = [{}, {}]
         for v in self.values:
@@ -86,7 +87,7 @@ class AdaptiveRecurrentNetwork:
 
             for node, ignored_activation, ignored_aggregation, ignored_bias, ignored_response, links in self.node_evals:
                 v[node] = 0.0
-                for i, w, bid, a, b, c, d, n in links:
+                for i, w, b_id, a, b, c, d, n, mod_w in links:
                     v[i] = 0.0
         self.active = 0
 
@@ -107,20 +108,32 @@ class AdaptiveRecurrentNetwork:
             ovalues[i] = v
 
         for node, activation, aggregation, bias, response, links in self.node_evals:
-            node_inputs = [ivalues[i] * w for i, w, bid, a, b, c, d, n in links]
+            node_inputs = [ivalues[i] * w for i, w, b_id, a, b, c, d, n, mod_w in links]
             s = aggregation(node_inputs)
             ovalues[node] = activation(bias + response * s)
         
-        # update connection weights with learning rules
+        # compute modulatory activations
+        mod_activations = {node:{} for node in ovalues.keys()}
+        for branch_id in range(self.num_branches):
+            for node, activation, aggregation, bias, response, links in self.node_evals:
+                node_inputs = []
+                for i, w, b_id, a, b, c, d, n, mod_w in links:
+                    if mod_w.get(branch_id):
+                        node_inputs.append(ovalues[i] * mod_w[branch_id])
+                s = aggregation(node_inputs)
+                mod_activations[node][branch_id] = activation(bias + response * s)
+
+        # update connection weights with learning rules and modulatory activations
+        # for each connection, its plasticity is modulated by the postsynaptic node's modulatory activation - specifically the activation for the connection's branch
         for node, activation, aggregation, bias, response, links in self.node_evals:
             for idx, link in enumerate(links):
-                i, w, bid, a, b, c, d, n = link
-                d_w = n * ((a * ovalues[i] * ovalues[node]) +
+                i, w, bid, a, b, c, d, n, mod_w = link
+                d_w = mod_activations[node].get(bid, 1.0) * n * ((a * ovalues[i] * ovalues[node]) +
                         (b * ovalues[i]) +
                         (c * ovalues[node]) +
                         (d * w))
                 new_w = max(-self.max_weight, min(w + d_w, self.max_weight))
-                links[idx] = (i, new_w, bid, a, b, c, d, n)
+                links[idx] = (i, new_w, bid, a, b, c, d, n, mod_w)
 
         return [ovalues[i] for i in self.output_nodes]
 
