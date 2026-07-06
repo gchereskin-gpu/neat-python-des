@@ -1236,14 +1236,14 @@ class DesGenome:
             self.nodes[new_node_id] = copy.deepcopy(self.nodes[bgid])
             self.nodes[new_node_id].key = new_node_id
             
-            # half the scale factor of the new branch node
-            setattr(self.nodes[new_node_id], 'scale', getattr(self.nodes[new_node_id], 'scale') * 0.5)
+            # multiply the scale factor of the new branch node by a certain value (currently 0.9)
+            setattr(self.nodes[new_node_id], 'scale', getattr(self.nodes[new_node_id], 'scale') * 0.9)
 
             self.branch_nodes[new_node_id] = copy.deepcopy(self.nodes[new_node_id])
 
             # only duplicate connections to the original branch node
             connections_to_duplicate = list((cgid, cg) for cgid, cg in self.connections.items() if cgid[1] == bgid)
-
+            
             # duplicate connections to original branch node for new branch node
             for cgid, cg in connections_to_duplicate:
                 i, o = cgid

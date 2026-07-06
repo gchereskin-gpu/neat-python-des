@@ -70,7 +70,7 @@ class DesFeedForwardNetwork:
         self.values = {key: 0.0 for key in inputs + outputs}
         self.branch_genes = branch_genes
 
-    def activate(self, inputs, branch_nodes): # needs to have an output/branch argument?
+    def activate(self, inputs, branch_nodes):
         if len(self.input_nodes) != len(inputs):
             raise RuntimeError(f"Expected {len(self.input_nodes):n} inputs, got {len(inputs):n}")
 
