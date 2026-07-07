@@ -111,6 +111,8 @@ class BaseGene:
                     new_gene = self.__class__(self.key, True)
                 else:
                     new_gene = self.__class__(self.key, False)
+            else:
+                new_gene = self.__class__(self.key)
         
         for a in self._gene_attributes:
             if random() > 0.5:
