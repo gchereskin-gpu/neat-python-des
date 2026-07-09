@@ -2444,3 +2444,15 @@ def get_pruned_genes(node_genes, connection_genes, input_keys, output_keys):
             used_connection_genes[key] = copy.deepcopy(cg)
 
     return used_node_genes, used_connection_genes
+
+
+class AdaptiveDefaultGenome(DefaultGenome):
+    """
+    A DefaultGenome CPPN whose configuration is read from the
+    [AdaptiveDefaultGenome] section. Used by Adaptive ES-HyperNEAT, where the
+    CPPN emits the connection weight plus the Hebbian plasticity parameters
+    (a, b, c, d, n) as additional outputs. Structurally identical to
+    DefaultGenome; a distinct name is required so neat.config.Config reads the
+    matching section (config reads sections by genome_type.__name__).
+    """
+    pass
