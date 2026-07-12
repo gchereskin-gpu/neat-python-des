@@ -263,7 +263,7 @@ class AdaptiveRecurrentNetwork:
         for node, activation, aggregation, bias, response, links in self.node_evals:
             for idx, link in enumerate(links):
                 i, w, bid, a, b, c, d, n, mod_w = link
-                d_w = math.tahn(mod_activations[node].get(bid, 1.0)/2) * n * ((a * ovalues[i] * ovalues[node]) +
+                d_w = math.tanh(mod_activations[node].get(bid, 1.0)/2) * n * ((a * ovalues[i] * ovalues[node]) +
                                                                 (b * ovalues[i]) +
                                                                 (c * ovalues[node]) +
                                                                 (d * w))

@@ -1236,8 +1236,8 @@ class DesGenome:
             self.nodes[new_node_id] = copy.deepcopy(self.nodes[bgid])
             self.nodes[new_node_id].key = new_node_id
             
-            # multiply the scale factor of the new branch node by a certain value (currently 0.9)
-            setattr(self.nodes[new_node_id], 'scale', getattr(self.nodes[new_node_id], 'scale') * 0.9)
+            # multiply the scale factor of the new branch node by a certain value (currently 0.95)
+            setattr(self.nodes[new_node_id], 'scale', getattr(self.nodes[new_node_id], 'scale') * 0.95)
 
             self.branch_nodes[new_node_id] = copy.deepcopy(self.nodes[new_node_id])
 
@@ -2067,10 +2067,13 @@ class AdaptiveDesGenome:
             self.nodes[new_node_id] = copy.deepcopy(self.nodes[bgid])
             self.nodes[new_node_id].key = new_node_id
             
-            # half the scale factor of the new branch node
-            setattr(self.nodes[new_node_id], 'scale', getattr(self.nodes[new_node_id], 'scale') * 0.5)
+            # multiply the scale factor of the new branch node (currently 0.95)
+            setattr(self.nodes[new_node_id], 'scale', getattr(self.nodes[new_node_id], 'scale') * 0.95)
 
             self.branch_nodes[new_node_id] = copy.deepcopy(self.nodes[new_node_id])
+
+            # invert the learning rate to increase diversity of learning rules
+            self.branch_nodes[new_node_id].n = -self.branch_nodes[new_node_id].n
 
             # only duplicate connections to the original branch node
             connections_to_duplicate = list((cgid, cg) for cgid, cg in self.connections.items() if cgid[1] == bgid)
