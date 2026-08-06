@@ -1605,6 +1605,7 @@ class AdaptiveDesGenomeConfig:
                         ConfigParameter('node_add_prob', float),
                         ConfigParameter('node_delete_prob', float),
                         ConfigParameter('branch_add_prob', float),
+                        ConfigParameter('branch_delete_prob', float),
                         ConfigParameter('single_structural_mutation', bool, 'false'),
                         ConfigParameter('structural_mutation_surer', str, 'default'),
                         ConfigParameter('initial_connection', str, 'unconnected')]
@@ -1934,7 +1935,7 @@ class AdaptiveDesGenome:
         if config.single_structural_mutation:
             div = max(1, (config.node_add_prob + config.node_delete_prob +
                           config.conn_add_prob + config.conn_delete_prob + 
-                          config.branch_add_prob))
+                          config.branch_add_prob + config.branch_delete_prob))
             r = random()
             if r < (config.node_add_prob / div):
                 self.mutate_add_node(config)
@@ -1950,6 +1951,10 @@ class AdaptiveDesGenome:
                        config.conn_add_prob + config.conn_delete_prob + 
                        config.branch_add_prob) / div):
                 self.mutate_add_branch(config)
+            elif r < ((config.node_add_prob + config.node_delete_prob +
+                       config.conn_add_prob + config.conn_delete_prob + 
+                       config.branch_add_prob + config.branch_delete_prob) / div):
+                self.mutate_delete_branch(config)
         else:
             if random() < config.node_add_prob:
                 self.mutate_add_node(config)
@@ -1965,6 +1970,9 @@ class AdaptiveDesGenome:
 
             if random() < config.branch_add_prob:
                 self.mutate_add_branch(config)
+
+            if random() < config.branch_delete_prob:
+                self.mutate_delete_branch(config)
 
         # Mutate connection genes.
         for cg in self.connections.values():
@@ -2112,45 +2120,50 @@ class AdaptiveDesGenome:
 
     def mutate_add_connection(self, config):
         """
-        Attempt to add a new connection, the only restriction being that the output
-        node cannot be one of the network input pins.
-        
-        Uses innovation tracking per NEAT paper (Stanley & Miikkulainen, 2002):
-        If multiple genomes in the same generation add the same connection,
-        they receive the same innovation number.
+        Add a connection drawn uniformly from the connections that can legally
+        be added, so the mutation succeeds whenever any legal one is left.
+
+        Drawing an (in, out) pair blind and giving up when it is already taken
+        makes the success rate fall as the genome fills up, while
+        mutate_delete_connection always succeeds. That asymmetry shrinks the
+        CPPN regardless of selection. Enumerating first removes it, which
+        leaves conn_add_prob == conn_delete_prob an unbiased random walk.
         """
         assert config.innovation_tracker is not None, (
             "Innovation tracker must be set before genome mutations. "
             "This should be set by the reproduction module."
         )
-        
-        possible_outputs = list(self.nodes)
-        out_node = choice(possible_outputs)
 
-        possible_inputs = list((set(self.nodes)- set(config.output_keys)) | set(config.input_keys) )
-        in_node = choice(possible_inputs)
+        # Branch nodes are this CPPN's real outputs, so they are excluded as
+        # sources -- which is also what makes a branch -> branch pair
+        # impossible, with no separate check needed. Input pins are implicit
+        # (they are not in self.nodes), so they are added back in by hand.
+        possible_inputs = ((set(self.nodes) - set(self.branch_nodes))
+                           | set(config.input_keys))
 
-        # Don't duplicate connections.
-        key = (in_node, out_node)
-        if key in self.connections:
-            # TODO: Should this be using mutation to/from rates? Hairy to configure...
-            if config.check_structural_mutation_surer():
-                self.connections[key].enabled = True
-            return
+        # Built once rather than per candidate: creates_cycle wants a list and
+        # is called for every pair below.
+        conn_list = list(self.connections)
 
-        # Don't allow connections between two output nodes
-        if in_node in self.branch_nodes.keys() and out_node in self.branch_nodes.keys():
-            return
+        # Every pair that could legally be added right now. A key already in
+        # self.connections is excluded whether or not it is enabled -- a
+        # disabled gene still occupies its slot.
+        possible_keys = [
+            (i, o)
+            for i in possible_inputs
+            for o in self.nodes
+            if (i, o) not in self.connections
+            and not (config.feed_forward and creates_cycle(conn_list, (i, o)))
+        ]
 
-        # No need to check for connections between input nodes:
-        # they cannot be the output end of a connection (see above).
+        # Saturated: no legal connection left to add.
+        if not possible_keys:
+            return -1
 
-        # For feed-forward networks, avoid creating cycles.
-        if config.feed_forward and creates_cycle(list(self.connections), key):
-            return
+        in_node, out_node = choice(possible_keys)
 
-        # Get innovation number for this connection
-        # Same connection added by multiple genomes in same generation gets same number
+        # Same connection added by several genomes in one generation gets the
+        # same innovation number.
         innovation = config.innovation_tracker.get_innovation_number(
             in_node, out_node, 'add_connection'
         )
@@ -2162,9 +2175,8 @@ class AdaptiveDesGenome:
 
         if len(self.branch_nodes) <= config.num_outputs:
             return -1
-            available_nodes = [k for k in self.nodes if k not in self.branch_nodes.keys()]
         else:
-            available_nodes = [k for k in zip(*iter((self.branch_nodes.keys(),)) * config.num_outputs)]
+            available_nodes = [k for k in zip(*(iter(self.branch_nodes.keys()),) * config.num_outputs)]
 
         if not available_nodes:
             return -1
@@ -2184,7 +2196,7 @@ class AdaptiveDesGenome:
             del self.nodes[del_key]
             del self.branch_nodes[del_key]
 
-        return del_key
+        return del_keys
 
     def mutate_delete_node(self, config):
         # Do nothing if there are no nodes.
@@ -2454,8 +2466,59 @@ class AdaptiveDefaultGenome(DefaultGenome):
     A DefaultGenome CPPN whose configuration is read from the
     [AdaptiveDefaultGenome] section. Used by Adaptive ES-HyperNEAT, where the
     CPPN emits the connection weight plus the Hebbian plasticity parameters
-    (a, b, c, d, n) as additional outputs. Structurally identical to
-    DefaultGenome; a distinct name is required so neat.config.Config reads the
-    matching section (config reads sections by genome_type.__name__).
+    (a, b, c, d, n) as additional outputs. Identical to DefaultGenome apart
+    from mutate_add_connection (below); a distinct name is required so
+    neat.config.Config reads the matching section (config reads sections by
+    genome_type.__name__).
     """
-    pass
+
+    def mutate_add_connection(self, config):
+        """
+        Add a connection drawn uniformly from the connections that can legally
+        be added, so the mutation succeeds whenever any legal one is left.
+
+        DefaultGenome draws an (in, out) pair blind and gives up if that pair
+        is already taken, so its success rate falls as the genome fills up
+        while mutate_delete_connection always succeeds. That asymmetry prunes
+        the CPPN regardless of selection. Enumerating first removes it, which
+        leaves conn_add_prob == conn_delete_prob an unbiased random walk.
+        """
+        assert config.innovation_tracker is not None, (
+            "Innovation tracker must be set before genome mutations. "
+            "This should be set by the reproduction module."
+        )
+
+        # Output nodes are excluded as sources, so an output -> output pair can
+        # never be drawn. Input pins are implicit (they are not in self.nodes),
+        # so they have to be added back in by hand.
+        possible_inputs = ((set(self.nodes) - set(config.output_keys))
+                           | set(config.input_keys))
+
+        # Built once rather than per candidate: creates_cycle wants a list and
+        # is called for every pair below.
+        conn_list = list(self.connections)
+
+        # Every pair that could legally be added right now. A key already in
+        # self.connections is excluded whether or not it is enabled -- a
+        # disabled gene still occupies its slot.
+        possible_keys = [
+            (i, o)
+            for i in possible_inputs
+            for o in self.nodes
+            if (i, o) not in self.connections
+            and not (config.feed_forward and creates_cycle(conn_list, (i, o)))
+        ]
+
+        # Saturated: no legal connection left to add.
+        if not possible_keys:
+            return -1
+
+        in_node, out_node = choice(possible_keys)
+
+        # Same connection added by several genomes in one generation gets the
+        # same innovation number.
+        innovation = config.innovation_tracker.get_innovation_number(
+            in_node, out_node, 'add_connection'
+        )
+        cg = self.create_connection(config, in_node, out_node, innovation)
+        self.connections[cg.key] = cg
